@@ -1,0 +1,169 @@
+<html>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+	integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"
+	integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj"
+	crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+	integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+	crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"
+	integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
+	crossorigin="anonymous"></script>
+
+<head>
+	<title>Minecraft Three.js</title>
+	<style>
+		body {
+			margin: 0;
+		}
+
+		canvas {
+			display: block;
+		}
+	</style>
+</head>
+
+<button id="button1" style="position: absolute; left: 50%;">Press</button>
+
+<body id="hide_id" style="background-color: black;">
+
+	<script src="perlin.js"></script>
+	<script src="three.js-master/build/three.js"></script>
+	<script src="three.js-master/examples/js/controls/PointerLockControls.js"></script>
+	<script src="three.js-master/examples/js/libs/stats.min.js"></script>
+	<script>
+		javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://github.com/mrdoob/stats.js/blob/master/build/stats.min.js';document.head.appendChild(script);})()		
+		var renderer = new THREE.WebGLRenderer();
+		renderer.setSize(window.innerWidth, window.innerHeight - 100);
+		document.body.appendChild(renderer.domElement);
+		var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 500);
+		camera.position.z = 5;
+		var scene = new THREE.Scene();
+		addLighting();
+
+		function addLighting()
+		{
+			const skyColor = 0xB1E1FF;  // light blue
+			const groundColor = 0xB97A20;  // brownish orange
+			const intensity = 1;
+			const light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
+			scene.background = new THREE.Color(skyColor);
+			const near = 7;
+			const far = 50;
+			//scene.fog = new THREE.Fog(skyColor, near, far);
+			scene.add(light)
+		}
+
+		let chunks = new Map();
+		const material = new THREE.MeshLambertMaterial({color: 0x02cf08});
+
+		function generateChunk(x, z) {
+			var chunk = [];
+			for (let r = x; r < x+16; r++) {
+				for (let c = z; c < z+16; c++) {
+					const geometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
+					mesh = new THREE.Mesh(geometry, material);
+					mesh.position.x = r;
+					mesh.position.z = c;
+					var value = 50 * noise.perlin2((r) / 100, (c) / 100);
+					mesh.position.y = Math.floor(value);
+					scene.add(mesh);
+					chunk.push(mesh);
+				}
+			}
+			chunks[x+""+z] = chunk;
+		}
+
+		// Inputs //
+		let controls = new THREE.PointerLockControls(camera, renderer.domElement);
+		let clock = new THREE.Clock();
+
+		let btn = document.querySelector("#button1");
+		btn.addEventListener('click', ()=>{
+			controls.lock();
+		})
+
+		let keyboard = [];
+		addEventListener("keydown", (e) => {
+			keyboard[e.key] = true;
+		});
+		addEventListener("keyup", (e) => {
+			keyboard[e.key] = false;
+		});
+
+		function processKeyboard(delta) {
+			let speed = 8;
+			let actualSpeed = speed * delta;
+			if (keyboard["w"]) {
+				controls.moveForward(actualSpeed);
+			}
+			if (keyboard["s"]) {
+				controls.moveForward(-actualSpeed);
+			}
+			if (keyboard["a"]) {
+				controls.moveRight(-actualSpeed);
+			}
+			if (keyboard["d"]) {
+				controls.moveRight(actualSpeed);
+			}
+			if (keyboard[" "]) {
+				camera.position.y += actualSpeed;
+			}
+			if (keyboard["q"]) {
+				camera.position.y -= actualSpeed;
+			}
+		}
+
+		function distanceBetween(x1, z1, x2, z2) {
+			return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(z1 - z2, 2));
+		}
+
+		let chunkRenderDist = 3 * 16;
+		function processLand() {
+			if (camera.position.x % 4 <= 0.05 || camera.position.z % 4 <= 0.05) {
+				let x = Math.floor(camera.position.x) - Math.floor((camera.position.x % 16));
+				let z = Math.floor(camera.position.z) - Math.floor((camera.position.z % 16));
+				for (let r = x - chunkRenderDist; r < x + chunkRenderDist; r += 16) {
+					for (let c = z - chunkRenderDist; c < z + chunkRenderDist; c += 16) {
+						if (chunks[r+""+c] == null) {
+							generateChunk(r, c);
+						}
+					}
+				}
+
+				var remove = [];
+				for (var i = 0, keys = Object.keys(chunks); i < keys.length; i++) {
+					let x1 = chunks[keys[i]][0].position.x;
+					let z1 = chunks[keys[i]][0].position.z;
+					let dist = Math.sqrt(Math.pow(chunkRenderDist, 2) + Math.pow(chunkRenderDist, 2)) + 0.5;
+					if (distanceBetween(camera.position.x, camera.position.z, x1, z1) >= dist) {
+						console.log(keys[i]);
+					}
+				}
+
+				for (var i = 0; i < remove.length; i++) {
+					for (let q = 0; q < chunks[keys[i]].length; q++) {
+						scene.remove(chunks[keys[i]][q]);
+					}
+					chunks[remove[i]] = null;
+				}
+			}
+		}
+
+		let stats = new Stats();
+		function drawScene() {
+			renderer.render(scene, camera);
+			let delta = clock.getDelta();
+			processKeyboard(delta);
+			processLand();
+			stats.update();
+			requestAnimationFrame(drawScene);
+		}
+
+		drawScene();
+
+	</script>
+</body>
+
+</html>
