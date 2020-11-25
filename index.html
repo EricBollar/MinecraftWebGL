@@ -37,7 +37,7 @@
 		var renderer = new THREE.WebGLRenderer();
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		document.body.appendChild(renderer.domElement);
-		var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 50);
+		var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 200);
 		camera.position.z = 5;
 		var scene = new THREE.Scene();
 		addLighting();
@@ -49,7 +49,7 @@
 			const intensity = 1;
 			const light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
 			scene.background = new THREE.Color(skyColor);
-			const density = 0.05;
+			const density = 0.01;
 			scene.fog = new THREE.FogExp2(skyColor, density);
 			scene.add(light)
 		}
@@ -78,7 +78,7 @@
 		});
 
 		function processKeyboard(delta) {
-			let speed = 5;
+			let speed = 6;
 			let actualSpeed = speed * delta;
 			if (keyboard["w"]) {
 				controls.moveForward(actualSpeed);
@@ -105,24 +105,17 @@
 		}
 
 		let data = new Map();
-		let chunks = new Map();
-		function generateChunk(x, z) {
-			data[x+""+z] = new Map();
-			chunk = [];
-			for (let r = x; r < x+16; r++) {
-				for (let c = z; c < z+16; c++) {
-					var height = Math.floor(20 * noise.perlin2(r/100, c/100));
-					chunk.push(drawBlock(r, c, height));
-					data[x+""+z][r+""+c] = height;
-				}
-			}
-			chunks[x+""+z] = chunk;
+
+		function generateBlock(x, z) {
+			var height = Math.floor(30 * noise.perlin2(x/75, z/75));
+			let block = drawBlock(x, z, height);
+			data[x+""+z] = [block, 1];
 		}
 
 		const geometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
-		const material = new THREE.MeshLambertMaterial({color: 0x02cf08});
+		const grassMaterial = new THREE.MeshLambertMaterial({color: 0x02cf08});
 		function drawBlock(x, z, y) {
-			mesh = new THREE.Mesh(geometry, material);
+			mesh = new THREE.Mesh(geometry, grassMaterial);
 			mesh.position.x = x;
 			mesh.position.y = y;
 			mesh.position.z = z;
@@ -130,58 +123,83 @@
 			return mesh;
 		}
 
-		let prevX = 2;
-		let prevZ = 2;
+		let prevX = 1;
+		let prevZ = 1;
 		function processLand() {
-			let x = Math.floor(camera.position.x) - Math.floor((camera.position.x % 16));
-			let z = Math.floor(camera.position.z) - Math.floor((camera.position.z % 16));
-			console.log(camera.position.x);
-			console.log(x);
+			let x = Math.floor(camera.position.x + 0.5);
+			let z = Math.floor(camera.position.z + 0.5);
 			if (x != prevX || z != prevZ) {
-				if (x % 16 == 0 || z % 16 <= 0) {
-					drawChunks(x, z);
-					console.log("here");
-					removeChunks(x, z);
+				drawBlocks(x, z);
+				removeBlocks(x, z);
+			}
+		}
+
+		let blockRenderDist = 65;
+		drawStart();
+		function drawStart() {
+			for (let r = -blockRenderDist - 10; r < blockRenderDist+11; r++) {
+				for (let c = -blockRenderDist - 10; c < blockRenderDist+11; c++) {
+					generateBlock(r, c);
+				}
+			}
+		}
+		function drawBlocks(playerX, playerZ) {
+			let c = playerZ + blockRenderDist;
+			for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
+				let block = data[r+""+c];
+				if (block != null) {
+					if (block[1] == 0) {
+						scene.add(block[0]);
+						block[1] = 1;
+					}
+				} else {
+					generateBlock(r, c);
+				}
+			}
+			c = playerZ - blockRenderDist;
+			for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
+				let block = data[r+""+c];
+				if (block != null) {
+					if (block[1] == 0) {
+						scene.add(block[0]);
+						block[1] = 1;
+					}
+				} else {
+					generateBlock(r, c);
+				}
+			}
+			let r = playerX + blockRenderDist;
+			for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
+				let block = data[r+""+c];
+				if (block != null) {
+					if (block[1] == 0) {
+						scene.add(block[0]);
+						block[1] = 1;
+					}
+				} else {
+					generateBlock(r, c);
+				}
+			}
+			r = playerX - blockRenderDist;
+			for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
+				let block = data[r+""+c];
+				if (block != null) {
+					if (block[1] == 0) {
+						scene.add(block[0]);
+						block[1] = 1;
+					}
+				} else {
+					generateBlock(r, c);
 				}
 			}
 		}
 
-		let chunkRenderDist = 3 * 16;
-		function drawChunks(playerX, playerZ) {
-			for (let r = playerX - chunkRenderDist; r < playerX + chunkRenderDist; r += 16) {
-				for (let c = playerZ - chunkRenderDist; c < playerZ + chunkRenderDist; c += 16) {
-					if (chunks[r+""+c] == null) {
-						if (data[r+""+c] != null) {
-							chunk = [];
-							for (let q = r; q < r+16; q++) {
-								for (let w = c; w < c+16; w++) {
-									chunk.push(drawBlock(q, w, data[r+""+c][q+""+w]));
-								}
-							}
-							chunks[r+""+c] = chunk;
-						} else {
-							generateChunk(r, c);
-						}
-					}
-				}
-			}
-		}
-
-		function removeChunks(playerX, playerZ) {
-			var remove = [];
-			for (var i in chunks) {
-				if (chunks[i] != null) {
-					let b = chunks[i][128];
-					if (distanceBetween(playerX, playerZ, b.position.x, b.position.z) >= chunkRenderDist) {
-						for (let m = 0; m < chunks[i].length; m++) {
-							scene.remove(chunks[i][m]);
-						}
-						remove.push(i);
-					}
-				}
-
-				for (let i = 0; i < remove.length; i++) {
-					chunks[remove[i]] = null;
+		function removeBlocks(playerX, playerZ) {
+			for (var i in data) {
+				let block = data[i];
+				if (block[1] == 1 && (playerZ - block[0].position.z > blockRenderDist || playerX - block[0].position.x > blockRenderDist)) {
+					scene.remove(block[0]);
+					block[1] = 0;
 				}
 			}
 		}
