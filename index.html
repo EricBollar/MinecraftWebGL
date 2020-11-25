@@ -24,7 +24,7 @@
 	</style>
 </head>
 
-<button id="button1" style="position: absolute; left: 50%;">Press</button>
+<button id="button1" style="position: absolute; left: 50%; transform: translate(-50%, 0);">Press to Lock Cursor</button>
 
 <body id="hide_id" style="background-color: black;">
 
@@ -35,9 +35,9 @@
 	<script>
 		javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://github.com/mrdoob/stats.js/blob/master/build/stats.min.js';document.head.appendChild(script);})()		
 		var renderer = new THREE.WebGLRenderer();
-		renderer.setSize(window.innerWidth, window.innerHeight - 100);
+		renderer.setSize(window.innerWidth, window.innerHeight);
 		document.body.appendChild(renderer.domElement);
-		var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 500);
+		var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 50);
 		camera.position.z = 5;
 		var scene = new THREE.Scene();
 		addLighting();
@@ -49,30 +49,9 @@
 			const intensity = 1;
 			const light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
 			scene.background = new THREE.Color(skyColor);
-			const near = 7;
-			const far = 50;
-			//scene.fog = new THREE.Fog(skyColor, near, far);
+			const density = 0.05;
+			scene.fog = new THREE.FogExp2(skyColor, density);
 			scene.add(light)
-		}
-
-		let chunks = new Map();
-		const material = new THREE.MeshLambertMaterial({color: 0x02cf08});
-
-		function generateChunk(x, z) {
-			var chunk = [];
-			for (let r = x; r < x+16; r++) {
-				for (let c = z; c < z+16; c++) {
-					const geometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
-					mesh = new THREE.Mesh(geometry, material);
-					mesh.position.x = r;
-					mesh.position.z = c;
-					var value = 50 * noise.perlin2((r) / 100, (c) / 100);
-					mesh.position.y = Math.floor(value);
-					scene.add(mesh);
-					chunk.push(mesh);
-				}
-			}
-			chunks[x+""+z] = chunk;
 		}
 
 		// Inputs //
@@ -82,6 +61,12 @@
 		let btn = document.querySelector("#button1");
 		btn.addEventListener('click', ()=>{
 			controls.lock();
+		})
+		controls.addEventListener('lock', ()=> {
+			btn.innerHTML = "Press ESC to Unlock Cursor"
+		})
+		controls.addEventListener('unlock', ()=> {
+			btn.innerHTML = "Press to Lock Cursor"
 		})
 
 		let keyboard = [];
@@ -93,7 +78,7 @@
 		});
 
 		function processKeyboard(delta) {
-			let speed = 8;
+			let speed = 5;
 			let actualSpeed = speed * delta;
 			if (keyboard["w"]) {
 				controls.moveForward(actualSpeed);
@@ -119,45 +104,93 @@
 			return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(z1 - z2, 2));
 		}
 
-		let chunkRenderDist = 3 * 16;
+		let data = new Map();
+		let chunks = new Map();
+		function generateChunk(x, z) {
+			data[x+""+z] = new Map();
+			chunk = [];
+			for (let r = x; r < x+16; r++) {
+				for (let c = z; c < z+16; c++) {
+					var height = Math.floor(20 * noise.perlin2(r/100, c/100));
+					chunk.push(drawBlock(r, c, height));
+					data[x+""+z][r+""+c] = height;
+				}
+			}
+			chunks[x+""+z] = chunk;
+		}
+
+		const geometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
+		const material = new THREE.MeshLambertMaterial({color: 0x02cf08});
+		function drawBlock(x, z, y) {
+			mesh = new THREE.Mesh(geometry, material);
+			mesh.position.x = x;
+			mesh.position.y = y;
+			mesh.position.z = z;
+			scene.add(mesh);
+			return mesh;
+		}
+
+		let prevX = 2;
+		let prevZ = 2;
 		function processLand() {
-			if (camera.position.x % 4 <= 0.05 || camera.position.z % 4 <= 0.05) {
-				let x = Math.floor(camera.position.x) - Math.floor((camera.position.x % 16));
-				let z = Math.floor(camera.position.z) - Math.floor((camera.position.z % 16));
-				for (let r = x - chunkRenderDist; r < x + chunkRenderDist; r += 16) {
-					for (let c = z - chunkRenderDist; c < z + chunkRenderDist; c += 16) {
-						if (chunks[r+""+c] == null) {
+			let x = Math.floor(camera.position.x) - Math.floor((camera.position.x % 16));
+			let z = Math.floor(camera.position.z) - Math.floor((camera.position.z % 16));
+			console.log(camera.position.x);
+			console.log(x);
+			if (x != prevX || z != prevZ) {
+				if (x % 16 == 0 || z % 16 <= 0) {
+					drawChunks(x, z);
+					console.log("here");
+					removeChunks(x, z);
+				}
+			}
+		}
+
+		let chunkRenderDist = 3 * 16;
+		function drawChunks(playerX, playerZ) {
+			for (let r = playerX - chunkRenderDist; r < playerX + chunkRenderDist; r += 16) {
+				for (let c = playerZ - chunkRenderDist; c < playerZ + chunkRenderDist; c += 16) {
+					if (chunks[r+""+c] == null) {
+						if (data[r+""+c] != null) {
+							chunk = [];
+							for (let q = r; q < r+16; q++) {
+								for (let w = c; w < c+16; w++) {
+									chunk.push(drawBlock(q, w, data[r+""+c][q+""+w]));
+								}
+							}
+							chunks[r+""+c] = chunk;
+						} else {
 							generateChunk(r, c);
 						}
 					}
 				}
+			}
+		}
 
-				var remove = [];
-				for (var i = 0, keys = Object.keys(chunks); i < keys.length; i++) {
-					let x1 = chunks[keys[i]][0].position.x;
-					let z1 = chunks[keys[i]][0].position.z;
-					let dist = Math.sqrt(Math.pow(chunkRenderDist, 2) + Math.pow(chunkRenderDist, 2)) + 0.5;
-					if (distanceBetween(camera.position.x, camera.position.z, x1, z1) >= dist) {
-						console.log(keys[i]);
+		function removeChunks(playerX, playerZ) {
+			var remove = [];
+			for (var i in chunks) {
+				if (chunks[i] != null) {
+					let b = chunks[i][128];
+					if (distanceBetween(playerX, playerZ, b.position.x, b.position.z) >= chunkRenderDist) {
+						for (let m = 0; m < chunks[i].length; m++) {
+							scene.remove(chunks[i][m]);
+						}
+						remove.push(i);
 					}
 				}
 
-				for (var i = 0; i < remove.length; i++) {
-					for (let q = 0; q < chunks[keys[i]].length; q++) {
-						scene.remove(chunks[keys[i]][q]);
-					}
+				for (let i = 0; i < remove.length; i++) {
 					chunks[remove[i]] = null;
 				}
 			}
 		}
 
-		let stats = new Stats();
 		function drawScene() {
 			renderer.render(scene, camera);
 			let delta = clock.getDelta();
 			processKeyboard(delta);
 			processLand();
-			stats.update();
 			requestAnimationFrame(drawScene);
 		}
 
