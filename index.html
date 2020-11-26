@@ -12,7 +12,8 @@
 	crossorigin="anonymous"></script>
 
 <head>
-	<title>Minecraft Three.js</title>
+	<title>WebGL Minecraft</title>
+	<link rel="shortcut icon" href="textures/icon.png">
 	<style>
 		body {
 			margin: 0;
@@ -25,6 +26,7 @@
 </head>
 
 <button id="button1" style="position: absolute; left: 50%; transform: translate(-50%, 0);">Press to Lock Cursor</button>
+<img src="textures/dot.png" style="position: absolute; width: 10px; left: 50%; top: 50%; transform: translate(-50%, -50%);">
 
 <body id="hide_id" style="background-color: black;">
 
@@ -32,13 +34,14 @@
 	<script src="three.js-master/build/three.js"></script>
 	<script src="three.js-master/examples/js/controls/PointerLockControls.js"></script>
 	<script src="three.js-master/examples/js/libs/stats.min.js"></script>
+	<script src = "gpu.js-develop/dist/gpu-browser.js"></script>
 	<script>
 		javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://github.com/mrdoob/stats.js/blob/master/build/stats.min.js';document.head.appendChild(script);})()		
 		var renderer = new THREE.WebGLRenderer();
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		document.body.appendChild(renderer.domElement);
-		var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 200);
-		camera.position.z = 5;
+		var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 100);
+		camera.position.y = 10;
 		var scene = new THREE.Scene();
 		addLighting();
 
@@ -49,8 +52,9 @@
 			const intensity = 1;
 			const light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
 			scene.background = new THREE.Color(skyColor);
-			const density = 0.01;
-			scene.fog = new THREE.FogExp2(skyColor, density);
+			const near = 79;
+			const far = 80;
+			scene.fog = new THREE.Fog(skyColor, near, far);
 			scene.add(light)
 		}
 
@@ -78,7 +82,7 @@
 		});
 
 		function processKeyboard(delta) {
-			let speed = 6;
+			let speed = 5;
 			let actualSpeed = speed * delta;
 			if (keyboard["w"]) {
 				controls.moveForward(actualSpeed);
@@ -104,21 +108,65 @@
 			return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(z1 - z2, 2));
 		}
 
+		let emptyMaterial = new THREE.MeshLambertMaterial({color:0x645910});
+
 		let data = new Map();
+
+		window.onmousedown = function() {
+			if (INTERSECTED && INTERSECTED.name != "bottom") {
+				INTERSECTED.material = emptyMaterial;
+				scene.remove(INTERSECTED);
+				let x = INTERSECTED.position.x;
+				let y = INTERSECTED.position.y;
+				let z = INTERSECTED.position.z;
+				data[x+","+z][y] = null;
+				if (data[x+","+z][y-1]) {
+						scene.add(data[x+","+z][y-1]);
+				}
+				if (data[(x+1)+","+z][y]) {
+						scene.add(data[(x+1)+","+z][y]);
+				}
+				if (data[(x-1)+","+z][y]) {
+						scene.add(data[(x-1)+","+z][y]);
+				}
+				if (data[x+","+(z+1)][y]) {
+						scene.add(data[x+","+(z+1)][y]);
+				}
+				if (data[x+","+(z-1)][y]) {
+						scene.add(data[x+","+(z-1)][y]);
+				}
+			}
+		}
 
 		function generateBlock(x, z) {
 			var height = Math.floor(30 * noise.perlin2(x/75, z/75));
+			if (data[x+","+z] == null) {
+				data[x+","+z] = new Map();
+			}
 			let block = drawBlock(x, z, height);
-			data[x+""+z] = [block, 1];
+			block.name = "block";
+			data[x+","+z][height] = block;
+			for (let i = height-1; i >= height-4; i--) {
+				block = drawBlock(x, z, i);
+				scene.remove(block);
+				block.name = "block";
+				if (i == height-4) {
+					block.material = new THREE.MeshLambertMaterial({color: 0x000000});
+					block.name = "bottom";
+					scene.remove(block);
+				}
+				data[x+","+z][i] = block;
+			}
 		}
 
-		const geometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
-		const grassMaterial = new THREE.MeshLambertMaterial({color: 0x02cf08});
+		let geometry = new THREE.BoxBufferGeometry();
 		function drawBlock(x, z, y) {
+			const grassMaterial = new THREE.MeshLambertMaterial({color: 0x02cf08});
 			mesh = new THREE.Mesh(geometry, grassMaterial);
 			mesh.position.x = x;
 			mesh.position.y = y;
 			mesh.position.z = z;
+			mesh.rotation.x = -Math.PI/2;
 			scene.add(mesh);
 			return mesh;
 		}
@@ -128,13 +176,15 @@
 		function processLand() {
 			let x = Math.floor(camera.position.x + 0.5);
 			let z = Math.floor(camera.position.z + 0.5);
-			if (x != prevX || z != prevZ) {
+			if ((x != prevX || z != prevZ) && (camera.position.x % 1 <= 0.1 || camera.position.z % 1 <= 0.1)) {
 				drawBlocks(x, z);
 				removeBlocks(x, z);
+				prevX = x;
+				prevZ = z;
 			}
 		}
 
-		let blockRenderDist = 65;
+		let blockRenderDist = 40;
 		drawStart();
 		function drawStart() {
 			for (let r = -blockRenderDist - 10; r < blockRenderDist+11; r++) {
@@ -143,64 +193,109 @@
 				}
 			}
 		}
+
 		function drawBlocks(playerX, playerZ) {
-			let c = playerZ + blockRenderDist;
-			for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
-				let block = data[r+""+c];
-				if (block != null) {
-					if (block[1] == 0) {
-						scene.add(block[0]);
-						block[1] = 1;
+			for (let c = playerZ + blockRenderDist - 2; c <= playerZ + blockRenderDist; c++) {
+				for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
+					let blocks = data[r+","+c];
+					if (blocks != null ) {
+						for (var i in blocks) {
+							let block = blocks[i];
+							if (block != null) {
+								if (block.material != emptyMaterial && !scene.children.includes(block) && block.name == "block") {
+									scene.add(block);
+								}
+							}
+						}
+					} else {
+						generateBlock(r, c);
 					}
-				} else {
-					generateBlock(r, c);
 				}
 			}
-			c = playerZ - blockRenderDist;
-			for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
-				let block = data[r+""+c];
-				if (block != null) {
-					if (block[1] == 0) {
-						scene.add(block[0]);
-						block[1] = 1;
+			for (let c = playerZ - blockRenderDist + 2; c >= playerZ - blockRenderDist; c--) {
+				for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
+					let blocks = data[r+","+c];
+					if (blocks != null ) {
+						for (var i in blocks) {
+							let block = blocks[i];
+							if (block != null) {
+								if (block.material != emptyMaterial && !scene.children.includes(block)) {
+									scene.add(block);
+								}
+							}
+						}
+					} else {
+						generateBlock(r, c);
 					}
-				} else {
-					generateBlock(r, c);
 				}
 			}
-			let r = playerX + blockRenderDist;
-			for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
-				let block = data[r+""+c];
-				if (block != null) {
-					if (block[1] == 0) {
-						scene.add(block[0]);
-						block[1] = 1;
+			for (let r = playerX + blockRenderDist -2; r <= playerX + blockRenderDist; r++) {
+				for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
+					let blocks = data[r+","+c];
+					if (blocks != null ) {
+						for (var i in blocks) {
+							let block = blocks[i];
+							if (block != null) {
+								if (block.material != emptyMaterial && !scene.children.includes(block)) {
+									scene.add(block);
+								}
+							}
+						}
+					} else {
+						generateBlock(r, c);
 					}
-				} else {
-					generateBlock(r, c);
 				}
 			}
-			r = playerX - blockRenderDist;
-			for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
-				let block = data[r+""+c];
-				if (block != null) {
-					if (block[1] == 0) {
-						scene.add(block[0]);
-						block[1] = 1;
+			for (let r = playerX - blockRenderDist +2; r >= playerX - blockRenderDist; r--) {
+				for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
+					let blocks = data[r+","+c];
+					if (blocks != null ) {
+						for (var i in blocks) {
+							let block = blocks[i];
+							if (block != null) {
+								if (block.material != emptyMaterial && !scene.children.includes(block)) {
+									scene.add(block);
+								}
+							}
+						}
+					} else {
+						generateBlock(r, c);
 					}
-				} else {
-					generateBlock(r, c);
 				}
 			}
 		}
 
 		function removeBlocks(playerX, playerZ) {
-			for (var i in data) {
-				let block = data[i];
-				if (block[1] == 1 && (playerZ - block[0].position.z > blockRenderDist || playerX - block[0].position.x > blockRenderDist)) {
-					scene.remove(block[0]);
-					block[1] = 0;
+			for (var i in scene.children) {
+				let block = scene.children[i];
+				if (block.name == "block" || block.name == "bottom") {
+					if (block.material == emptyMaterial || (Math.abs(playerZ - block.position.z) > blockRenderDist-0.9 || Math.abs(playerX - block.position.x) > blockRenderDist-0.9)) {
+						scene.remove(block);
+					}
 				}
+			}
+		}
+
+		let INTERSECTED;
+		function checkMouse() {
+			let raycaster = new THREE.Raycaster();
+			const center = new THREE.Vector2(0, 0);
+			raycaster.setFromCamera( center, camera );
+			const intersects = raycaster.intersectObjects( scene.children );
+			if (intersects.length > 0) {
+				if (INTERSECTED != intersects[0].object) {
+					if (INTERSECTED) {
+						INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+					}
+					INTERSECTED = intersects[0].object;
+					INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+					INTERSECTED.material.emissive.setHex( 0xf0260f );
+				}
+			} else {
+				if (INTERSECTED) {
+					INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+				}
+				INTERSECTED = null;
 			}
 		}
 
@@ -209,6 +304,7 @@
 			let delta = clock.getDelta();
 			processKeyboard(delta);
 			processLand();
+			checkMouse();
 			requestAnimationFrame(drawScene);
 		}
 
