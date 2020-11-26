@@ -27,6 +27,7 @@
 
 <button id="button1" style="position: absolute; left: 50%; transform: translate(-50%, 0);">Press to Lock Cursor</button>
 <img src="textures/dot.png" style="position: absolute; width: 10px; left: 50%; top: 50%; transform: translate(-50%, -50%);">
+<h2 style="position: absolute; bottom: 0%; left: 10px;"><span class="badge badge-secondary" id="playerCoords">(0, 0)</span></h2>
 
 <body id="hide_id" style="background-color: black;">
 
@@ -34,15 +35,14 @@
 	<script src="three.js-master/build/three.js"></script>
 	<script src="three.js-master/examples/js/controls/PointerLockControls.js"></script>
 	<script src="three.js-master/examples/js/libs/stats.min.js"></script>
-	<script src = "gpu.js-develop/dist/gpu-browser.js"></script>
 	<script>
 		javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://github.com/mrdoob/stats.js/blob/master/build/stats.min.js';document.head.appendChild(script);})()		
-		var renderer = new THREE.WebGLRenderer();
+		let renderer = new THREE.WebGLRenderer();
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		document.body.appendChild(renderer.domElement);
-		var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 100);
-		camera.position.y = 10;
-		var scene = new THREE.Scene();
+		let camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+		camera.position.y = 5;
+		let scene = new THREE.Scene();
 		addLighting();
 
 		function addLighting()
@@ -52,8 +52,8 @@
 			const intensity = 1;
 			const light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
 			scene.background = new THREE.Color(skyColor);
-			const near = 79;
-			const far = 80;
+			const near = 20;
+			const far = 25;
 			scene.fog = new THREE.Fog(skyColor, near, far);
 			scene.add(light)
 		}
@@ -82,7 +82,7 @@
 		});
 
 		function processKeyboard(delta) {
-			let speed = 5;
+			let speed = 4;
 			let actualSpeed = speed * delta;
 			if (keyboard["w"]) {
 				controls.moveForward(actualSpeed);
@@ -104,75 +104,134 @@
 			}
 		}
 
-		function distanceBetween(x1, z1, x2, z2) {
-			return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(z1 - z2, 2));
-		}
-
-		let emptyMaterial = new THREE.MeshLambertMaterial({color:0x645910});
-
 		let data = new Map();
 
-		window.onmousedown = function() {
-			if (INTERSECTED && INTERSECTED.name != "bottom") {
-				INTERSECTED.material = emptyMaterial;
-				scene.remove(INTERSECTED);
-				let x = INTERSECTED.position.x;
-				let y = INTERSECTED.position.y;
-				let z = INTERSECTED.position.z;
-				data[x+","+z][y] = null;
-				if (data[x+","+z][y-1]) {
-						scene.add(data[x+","+z][y-1]);
+		window.onmousedown = function(e) {
+			e = e || window.event;
+			if (e.keyCode || e.which == 1) { // left click
+				if (INTERSECTED && INTERSECTED.name != "bottom") {
+					destroyBlock(INTERSECTED.position.x, INTERSECTED.position.y, INTERSECTED.position.z);
 				}
-				if (data[(x+1)+","+z][y]) {
-						scene.add(data[(x+1)+","+z][y]);
-				}
-				if (data[(x-1)+","+z][y]) {
-						scene.add(data[(x-1)+","+z][y]);
-				}
-				if (data[x+","+(z+1)][y]) {
-						scene.add(data[x+","+(z+1)][y]);
-				}
-				if (data[x+","+(z-1)][y]) {
-						scene.add(data[x+","+(z-1)][y]);
-				}
+			} else if (e.keyCode || e.which == 3) { // right click
+				console.log("clicked");
 			}
 		}
 
-		function generateBlock(x, z) {
-			var height = Math.floor(30 * noise.perlin2(x/75, z/75));
-			if (data[x+","+z] == null) {
-				data[x+","+z] = new Map();
+		function destroyBlock(x, y, z) {
+			scene.remove(data[x+","+z][y]);
+			data[x+","+z][y] = null;
+
+			// update blocks surrounding
+			if (data[x+","+z][y-1]) {
+				data[x+","+z][y-1].visible = true;
 			}
-			let block = drawBlock(x, z, height);
-			block.name = "block";
-			data[x+","+z][height] = block;
-			for (let i = height-1; i >= height-4; i--) {
-				block = drawBlock(x, z, i);
-				scene.remove(block);
-				block.name = "block";
-				if (i == height-4) {
-					block.material = new THREE.MeshLambertMaterial({color: 0x000000});
+			if (data[x+","+z][y+1]) {
+				data[x+","+z][y+1].visible = true;
+			}
+			if (data[(x+1)+","+z][y]) {
+				data[(x+1)+","+z][y].visible = true;
+			}
+			if (data[(x-1)+","+z][y]) {
+				data[(x-1)+","+z][y].visible = true;
+			}
+			if (data[x+","+(z+1)][y]) {
+				data[x+","+(z+1)][y].visible = true;
+			}
+			if (data[x+","+(z-1)][y]) {
+				data[x+","+(z-1)][y].visible = true;
+			}
+		}
+
+		let toAdd = [];
+		noise.seed(Math.random());
+
+		function getHeightValue(x, z) {
+			return 2+Math.floor(10 * Math.abs(noise.perlin2(x/50, z/50)));
+		}
+
+		function getBlock(x, y, z) {
+			return data[getKey(x, z)][y];
+		}
+
+		function getKey(x, z) {
+			return x+","+z;
+		}
+
+		function generateCoordinate(x, z) {
+			var height = getHeightValue(x, z);
+
+			let key = getKey(x, z); // grass
+			if (!data[key]) {
+				data[key] = new Map();
+			}
+			let block = drawBlock(x, z, height, 1);
+			data[key][height] = block;
+
+			for (let i = height-1; i >= 0; i--) {
+				let block;
+				if (i == 0) {
+					block = drawBlock(x, z, i, 0); // bedrock
 					block.name = "bottom";
-					scene.remove(block);
+				} else if (Math.floor(Math.random() * 10) + 1 == 5) { 
+					block = drawBlock(x, z, i, 5); // diamond ?
+				} else {
+					block = drawBlock(x, z, i, 2); // stone
 				}
-				data[x+","+z][i] = block;
+				block.visible = false;
+				data[key][i] = block;
+			}
+
+			if (Math.floor(Math.random() * 150) + 1 == 5) { // tree ?
+				let h = Math.floor(Math.random() * 3 + 4.5);
+				for (let i = 1; i < h; i++) {
+					let block = drawBlock(x, z, height+i, 3);
+					data[key][height+i] = block;
+					if (i >= 3) {
+						block = drawBlock(x+1, z, height+i, 4);
+						toAdd.push(block);
+						block = drawBlock(x-1, z, height+i, 4);
+						toAdd.push(block);
+						block = drawBlock(x, z+1, height+i, 4);
+						toAdd.push(block);
+						block = drawBlock(x, z-1, height+i, 4);
+						toAdd.push(block);
+					}
+				}
+				let block = drawBlock(x, z, height+h, 4);
+				data[key][height+h] = block;
 			}
 		}
 
+		let grassColor = 0x0ecf41;
+		let stoneColor = 0x747f7c;
+		let bottomColor = 0x351800;
+		let treeColor = 0xb37d0c;
+		let leafColor = 0x5dfd80;
+		let diamondColor = 0x0a9ff5;
 		let geometry = new THREE.BoxBufferGeometry();
-		function drawBlock(x, z, y) {
-			const grassMaterial = new THREE.MeshLambertMaterial({color: 0x02cf08});
-			mesh = new THREE.Mesh(geometry, grassMaterial);
+		function drawBlock(x, z, y, value) {
+			let col = 0x000000;
+			switch (value) {
+				case 0: col = bottomColor; break;
+				case 1: col = grassColor; break;
+				case 2: col = stoneColor; break;
+				case 3: col = treeColor; break;
+				case 4: col = leafColor; break;
+				case 5: col = diamondColor; break;
+			}
+			const material = new THREE.MeshLambertMaterial({color: col});
+			mesh = new THREE.Mesh(geometry, material);
 			mesh.position.x = x;
 			mesh.position.y = y;
 			mesh.position.z = z;
-			mesh.rotation.x = -Math.PI/2;
+			mesh.name = "block";
 			scene.add(mesh);
 			return mesh;
 		}
 
 		let prevX = 1;
 		let prevZ = 1;
+		let playerCoordsUI = document.getElementById("playerCoords");
 		function processLand() {
 			let x = Math.floor(camera.position.x + 0.5);
 			let z = Math.floor(camera.position.z + 0.5);
@@ -182,85 +241,86 @@
 				prevX = x;
 				prevZ = z;
 			}
+			let y = Math.floor(camera.position.y + 0.5);
+			playerCoordsUI.innerHTML = "(x:" + x + ", y:" + y + ", z:" + z + ")";
 		}
 
-		let blockRenderDist = 40;
-		drawStart();
-		function drawStart() {
-			for (let r = -blockRenderDist - 10; r < blockRenderDist+11; r++) {
-				for (let c = -blockRenderDist - 10; c < blockRenderDist+11; c++) {
-					generateBlock(r, c);
+		let blockRenderDist = 25;
+		generateStart();
+		function generateStart() {
+			drawStart();
+			let tall = 0;
+			let key = getKey(0, 0);
+			for (var i in data[key]) {
+				if (data[key][i].position.y > tall) {
+					tall = data[key][i].position.y;
 				}
+			}
+			camera.position.y = tall + 3;
+		}
+
+		function drawStart() {
+			for (let r = -blockRenderDist; r < blockRenderDist; r++) {
+				for (let c = -blockRenderDist; c < blockRenderDist; c++) {
+					generateCoordinate(r, c);
+				}
+			}
+		}
+
+		function updateCrossovers() { // e.g. leaves
+			for (var i in toAdd) {
+				let block = toAdd[i];
+				let x = block.position.x;
+				let y = block.position.y;
+				let z = block.position.z;
+				let key = getKey(x, z);
+				if (!data[key]) {
+					generateCoordinate(x, z);
+				}
+				data[key][y] = block;
+			}
+			for (let i = 0; i < toAdd.length; i++) {
+				toAdd.pop();
+			}
+		}
+
+		function drawCoord(x, z) {
+			let key = getKey(x, z);
+			let blocks = data[key];
+			if (blocks != null ) {
+				for (var i in blocks) {
+					let block = blocks[i];
+					if (block != null) {
+						if (!scene.children.includes(block)) {
+							scene.add(block);
+						}
+					}
+				}
+			} else {
+				generateCoordinate(x, z);
 			}
 		}
 
 		function drawBlocks(playerX, playerZ) {
-			for (let c = playerZ + blockRenderDist - 2; c <= playerZ + blockRenderDist; c++) {
+			updateCrossovers();
+			for (let c = playerZ + blockRenderDist - 1; c <= playerZ + blockRenderDist; c++) {
 				for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
-					let blocks = data[r+","+c];
-					if (blocks != null ) {
-						for (var i in blocks) {
-							let block = blocks[i];
-							if (block != null) {
-								if (block.material != emptyMaterial && !scene.children.includes(block) && block.name == "block") {
-									scene.add(block);
-								}
-							}
-						}
-					} else {
-						generateBlock(r, c);
-					}
+					drawCoord(r, c);
 				}
 			}
-			for (let c = playerZ - blockRenderDist + 2; c >= playerZ - blockRenderDist; c--) {
+			for (let c = playerZ - blockRenderDist + 1; c >= playerZ - blockRenderDist; c--) {
 				for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
-					let blocks = data[r+","+c];
-					if (blocks != null ) {
-						for (var i in blocks) {
-							let block = blocks[i];
-							if (block != null) {
-								if (block.material != emptyMaterial && !scene.children.includes(block)) {
-									scene.add(block);
-								}
-							}
-						}
-					} else {
-						generateBlock(r, c);
-					}
+					drawCoord(r, c);
 				}
 			}
-			for (let r = playerX + blockRenderDist -2; r <= playerX + blockRenderDist; r++) {
+			for (let r = playerX + blockRenderDist -1; r <= playerX + blockRenderDist; r++) {
 				for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
-					let blocks = data[r+","+c];
-					if (blocks != null ) {
-						for (var i in blocks) {
-							let block = blocks[i];
-							if (block != null) {
-								if (block.material != emptyMaterial && !scene.children.includes(block)) {
-									scene.add(block);
-								}
-							}
-						}
-					} else {
-						generateBlock(r, c);
-					}
+					drawCoord(r, c);
 				}
 			}
-			for (let r = playerX - blockRenderDist +2; r >= playerX - blockRenderDist; r--) {
+			for (let r = playerX - blockRenderDist +1; r >= playerX - blockRenderDist; r--) {
 				for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
-					let blocks = data[r+","+c];
-					if (blocks != null ) {
-						for (var i in blocks) {
-							let block = blocks[i];
-							if (block != null) {
-								if (block.material != emptyMaterial && !scene.children.includes(block)) {
-									scene.add(block);
-								}
-							}
-						}
-					} else {
-						generateBlock(r, c);
-					}
+					drawCoord(r, c);
 				}
 			}
 		}
@@ -269,7 +329,7 @@
 			for (var i in scene.children) {
 				let block = scene.children[i];
 				if (block.name == "block" || block.name == "bottom") {
-					if (block.material == emptyMaterial || (Math.abs(playerZ - block.position.z) > blockRenderDist-0.9 || Math.abs(playerX - block.position.x) > blockRenderDist-0.9)) {
+					if (Math.abs(playerZ - block.position.z) > blockRenderDist-0.9 || Math.abs(playerX - block.position.x) > blockRenderDist-0.9) {
 						scene.remove(block);
 					}
 				}
