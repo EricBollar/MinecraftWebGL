@@ -44,16 +44,18 @@
 		camera.position.y = 5;
 		let scene = new THREE.Scene();
 		addLighting();
+		
+		let pause = false;
 
 		function addLighting()
 		{
-			const skyColor = 0xB1E1FF;  // light blue
-			const groundColor = 0xB97A20;  // brownish orange
+			const skyColor = 0x3ec8fd;  // light blue
+			const groundColor = 0xb0850a;  // brownish orange
 			const intensity = 1;
-			const light = new THREE.HemisphereLight(skyColor, groundColor, intensity);
+			const light = new THREE.HemisphereLight(0xffffff, groundColor, intensity);
 			scene.background = new THREE.Color(skyColor);
-			const near = 20;
-			const far = 25;
+			const near = 15;
+			const far = 20;
 			scene.fog = new THREE.Fog(skyColor, near, far);
 			scene.add(light)
 		}
@@ -68,9 +70,11 @@
 		})
 		controls.addEventListener('lock', ()=> {
 			btn.innerHTML = "Press ESC to Unlock Cursor"
+			pause = true;
 		})
 		controls.addEventListener('unlock', ()=> {
 			btn.innerHTML = "Press to Lock Cursor"
+			pause = false;
 		})
 
 		let keyboard = [];
@@ -81,9 +85,11 @@
 			keyboard[e.key] = false;
 		});
 
+		let mode = 0;
+		let prev = new THREE.Vector3(0, 0, 0);
 		function processKeyboard(delta) {
 			let speed = 4;
-			let actualSpeed = speed * delta;
+			let actualSpeed = speed * delta; 
 			if (keyboard["w"]) {
 				controls.moveForward(actualSpeed);
 			}
@@ -97,10 +103,41 @@
 				controls.moveRight(actualSpeed);
 			}
 			if (keyboard[" "]) {
-				camera.position.y += actualSpeed;
+				if (mode == 0) {
+					if (canJump) {
+						velocity.y = 2;
+						camera.position.y += 0.05;
+						canJump = false;
+					}
+				} else {
+					camera.position.y += actualSpeed;
+				}
 			}
 			if (keyboard["q"]) {
 				camera.position.y -= actualSpeed;
+			}
+			if (keyboard["m"]) {
+				if (mode == 0) {
+					mode = 1;
+				} else {
+					mode = 0;
+				}
+			}
+			if (mode == 0) {
+				playerPhysics(speed, delta);
+				checkWalls();
+			}
+		}
+
+		function checkWalls() {
+			let x = Math.floor(camera.position.x+0.5);
+			let y = Math.floor(camera.position.y-0.5);
+			let z = Math.floor(camera.position.z+0.5);
+			let key = getKey(x, z);
+			if (data[key][y] != null) {
+
+			} else {
+				prev = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z);
 			}
 		}
 
@@ -109,11 +146,11 @@
 		window.onmousedown = function(e) {
 			e = e || window.event;
 			if (e.keyCode || e.which == 1) { // left click
-				if (INTERSECTED && INTERSECTED.name != "bottom") {
+				if (INTERSECTED && INTERSECTED.name != "bottom" && pause) {
 					destroyBlock(INTERSECTED.position.x, INTERSECTED.position.y, INTERSECTED.position.z);
 				}
 			} else if (e.keyCode || e.which == 3) { // right click
-				console.log("clicked");
+				console.log("click");
 			}
 		}
 
@@ -202,11 +239,11 @@
 			}
 		}
 
-		let grassColor = 0x0ecf41;
+		let grassColor = 0x038927;
 		let stoneColor = 0x747f7c;
 		let bottomColor = 0x351800;
 		let treeColor = 0xb37d0c;
-		let leafColor = 0x5dfd80;
+		let leafColor = 0x6fde62;
 		let diamondColor = 0x0a9ff5;
 		let geometry = new THREE.BoxBufferGeometry();
 		function drawBlock(x, z, y, value) {
@@ -313,12 +350,12 @@
 					drawCoord(r, c);
 				}
 			}
-			for (let r = playerX + blockRenderDist -1; r <= playerX + blockRenderDist; r++) {
+			for (let r = playerX + blockRenderDist - 1; r <= playerX + blockRenderDist; r++) {
 				for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
 					drawCoord(r, c);
 				}
 			}
-			for (let r = playerX - blockRenderDist +1; r >= playerX - blockRenderDist; r--) {
+			for (let r = playerX - blockRenderDist + 1; r >= playerX - blockRenderDist; r--) {
 				for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
 					drawCoord(r, c);
 				}
@@ -333,6 +370,23 @@
 						scene.remove(block);
 					}
 				}
+			}
+		}
+
+		let velocity = new THREE.Vector3(0, 0, 0);
+		let time = 0;
+		let canJump = false;
+		function playerPhysics(speed, delta) {
+			let x = Math.floor(camera.position.x + 0.5);
+			let y = Math.floor(camera.position.y + 0.5);
+			let z = Math.floor(camera.position.z + 0.5);
+			let key = getKey(x, z);
+			let actualSpeed = speed * delta;
+			if (data[key][y-2] == null) {
+				camera.position.y += actualSpeed * velocity.y;
+				velocity.y -= 8*delta;
+			} else {
+				canJump = true;
 			}
 		}
 
@@ -362,9 +416,11 @@
 		function drawScene() {
 			renderer.render(scene, camera);
 			let delta = clock.getDelta();
-			processKeyboard(delta);
-			processLand();
-			checkMouse();
+			if (pause) {
+				processKeyboard(delta);
+				processLand();
+				checkMouse();
+			}
 			requestAnimationFrame(drawScene);
 		}
 
