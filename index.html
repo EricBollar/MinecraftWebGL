@@ -256,31 +256,33 @@
 			}
 		}
 
-		let grassColor = 0x038927;
-		let stoneColor = 0x747f7c;
-		let bottomColor = 0x351800;
-		let treeColor = 0xb37d0c;
-		let leafColor = 0x6fde62;
-		let diamondColor = 0x0a9ff5;
+		// let grassColor = 0x038927;
+		// let stoneColor = 0x747f7c;
+		// let bottomColor = 0x351800;
+		// let treeColor = 0xb37d0c;
+		// let leafColor = 0x6fde62;
+		// let diamondColor = 0x0a9ff5;
 		let base = new THREE.BoxGeometry(1, 1, 1);
-		let m = new THREE.TextureLoader().load("textures/dirt.jpeg");
+		let loader = new THREE.TextureLoader();
+		let grassMap = new THREE.TextureLoader().load("textures/grassTop.jpeg");
+		// let dirtMap = new THREE.TextureLoader().load("textures/dirt.jpeg");
+		let stoneMap = new THREE.TextureLoader().load("textures/stone.jpeg");
+		let treeMap = new THREE.TextureLoader().load("textures/tree.jpeg");
+		let leafMap = new THREE.TextureLoader().load("textures/leaf.png");
+		let diamondMap = new THREE.TextureLoader().load("textures/diamond.jpeg");
+		let bottomMap = new THREE.TextureLoader().load("textures/bedrock.png");
 		
 		function drawBlock(x, z, y, value) {
-			let col = 0x000000;
 			switch (value) {
-				case 0: col = bottomColor; break;
-				case 1: col = grassColor; break;
-				case 2: col = stoneColor; break;
-				case 3: col = treeColor; break;
-				case 4: col = leafColor; break;
-				case 5: col = diamondColor; break;
+				case 0: m = bottomMap; break;
+				case 1: m = grassMap; break;
+				case 2: m = stoneMap; break;
+				case 3: m = treeMap; break;
+				case 4: m = leafMap; break;
+				case 5: m = diamondMap; break;
 			}
 			let geometry = base.clone();
 			var material = new THREE.MeshPhongMaterial({map: m, vertexColors: THREE.FaceColors});
-			for (var i = 0; i < geometry.faces.length; i++) {
-				var face = geometry.faces[i];
-				face.color.setHex(col);
-			}
 			var mesh = new THREE.Mesh( geometry, material);
 			mesh.position.x = x;
 			mesh.position.y = y;
