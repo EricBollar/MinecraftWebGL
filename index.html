@@ -282,7 +282,7 @@
 				case 6: m = dirtMap; break;
 			}
 			let geometry = base.clone();
-			var material = new THREE.MeshPhongMaterial({map: clientSideTestMap, vertexColors: THREE.FaceColors});
+			var material = new THREE.MeshPhongMaterial({map: m, vertexColors: THREE.FaceColors});
 			var mesh = new THREE.Mesh( geometry, material);
 			mesh.position.x = x;
 			mesh.position.y = y;
