@@ -40,7 +40,7 @@
 		let renderer = new THREE.WebGLRenderer();
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		document.body.appendChild(renderer.domElement);
-		let camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+		let camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.001, 50);
 		camera.position.y = 5;
 		let scene = new THREE.Scene();
 		addLighting();
@@ -49,14 +49,12 @@
 
 		function addLighting()
 		{
-			const skyColor = 0x3ec8fd;  // light blue
-			const groundColor = 0xb0850a;  // brownish orange
-			const intensity = 1;
-			const light = new THREE.HemisphereLight(0xffffff, groundColor, intensity);
-			scene.background = new THREE.Color(skyColor);
-			const near = 15;
-			const far = 20;
-			scene.fog = new THREE.Fog(skyColor, near, far);
+			let sky = 0x06a3f9;
+			const light = new THREE.HemisphereLight(sky, 0x50544f, 1);
+			scene.background = new THREE.Color(sky);
+			const near = 10;
+			const far = 12;
+			scene.fog = new THREE.Fog(sky, near, far);
 			scene.add(light)
 		}
 
@@ -85,7 +83,7 @@
 			keyboard[e.key] = false;
 		});
 
-		let mode = 0;
+		let mode = 1;
 		let prev = new THREE.Vector3(0, 0, 0);
 		function processKeyboard(delta) {
 			let speed = 4;
@@ -106,8 +104,8 @@
 				if (mode == 0) {
 					if (canJump) {
 						velocity.y = 2;
-						camera.position.y += 0.05;
 						canJump = false;
+						console.log("here");
 					}
 				} else {
 					camera.position.y += actualSpeed;
@@ -117,11 +115,7 @@
 				camera.position.y -= actualSpeed;
 			}
 			if (keyboard["m"]) {
-				if (mode == 0) {
-					mode = 1;
-				} else {
-					mode = 0;
-				}
+				
 			}
 			if (mode == 0) {
 				playerPhysics(speed, delta);
@@ -131,11 +125,23 @@
 
 		function checkWalls() {
 			let x = Math.floor(camera.position.x+0.5);
-			let y = Math.floor(camera.position.y-0.5);
+			let y = Math.floor(camera.position.y+0.5);
 			let z = Math.floor(camera.position.z+0.5);
 			let key = getKey(x, z);
-			if (data[key][y] != null) {
-
+			let key2 = getKey(Math.floor(prev.x, prev.z));
+			if (data[key][y-2] != null) {
+				canJump = true;
+			}
+			if (data[key][y-1] != null || data[key][y]) {
+				if (data[key][y] == null && data[key][y+1] == null && data[key][y+1] == null) {
+					velocity.y = 1;
+					camera.position.y += 1;
+					canJump = false;
+				} else {
+					camera.position.x = prev.x;
+					camera.position.y = prev.y;
+					camera.position.z = prev.z;
+				}
 			} else {
 				prev = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z);
 			}
@@ -150,32 +156,43 @@
 					destroyBlock(INTERSECTED.position.x, INTERSECTED.position.y, INTERSECTED.position.z);
 				}
 			} else if (e.keyCode || e.which == 3) { // right click
-				console.log("click");
+				let posX = INTERSECTED.position.x + face.normal.x;
+				let posY = INTERSECTED.position.y + face.normal.y;
+				let posZ = INTERSECTED.position.z + face.normal.z;
+				let key = getKey(posX, posZ);
+				if (data[key][posY] == null) {
+					data[key][posY] = drawBlock(posX, posZ, posY, 5);
+				}
 			}
 		}
 
 		function destroyBlock(x, y, z) {
-			scene.remove(data[x+","+z][y]);
-			data[x+","+z][y] = null;
+			let key = getKey(x, z);
+			scene.remove(data[key][y]);
+			data[key][y] = null;
 
 			// update blocks surrounding
-			if (data[x+","+z][y-1]) {
-				data[x+","+z][y-1].visible = true;
+			if (data[key][y-1]) {
+				data[key][y-1].visible = true;
 			}
-			if (data[x+","+z][y+1]) {
-				data[x+","+z][y+1].visible = true;
+			if (data[key][y+1]) {
+				data[key][y+1].visible = true;
 			}
-			if (data[(x+1)+","+z][y]) {
-				data[(x+1)+","+z][y].visible = true;
+			key = getKey(x+1, z);
+			if (data[key][y]) {
+				data[key][y].visible = true;
 			}
-			if (data[(x-1)+","+z][y]) {
-				data[(x-1)+","+z][y].visible = true;
+			key = getKey(x-1, z);
+			if (data[key][y]) {
+				data[key][y].visible = true;
 			}
-			if (data[x+","+(z+1)][y]) {
-				data[x+","+(z+1)][y].visible = true;
+			key = getKey(x, z+1);
+			if (data[key][y]) {
+				data[key][y].visible = true;
 			}
-			if (data[x+","+(z-1)][y]) {
-				data[x+","+(z-1)][y].visible = true;
+			key = getKey(x, z-1);
+			if (data[key][y]) {
+				data[key][y].visible = true;
 			}
 		}
 
@@ -245,7 +262,8 @@
 		let treeColor = 0xb37d0c;
 		let leafColor = 0x6fde62;
 		let diamondColor = 0x0a9ff5;
-		let geometry = new THREE.BoxBufferGeometry();
+		let base = new THREE.BoxGeometry(1, 1, 1);
+		
 		function drawBlock(x, z, y, value) {
 			let col = 0x000000;
 			switch (value) {
@@ -256,13 +274,20 @@
 				case 4: col = leafColor; break;
 				case 5: col = diamondColor; break;
 			}
-			const material = new THREE.MeshLambertMaterial({color: col});
-			mesh = new THREE.Mesh(geometry, material);
+			let geometry = base.clone();
+			var material = new THREE.MeshPhongMaterial({color: col, vertexColors: THREE.FaceColors});
+			for (var i = 0; i < geometry.faces.length; i++) {
+				var face = geometry.faces[i];
+				face.color.setHex(col);
+			}
+			var mesh = new THREE.Mesh( geometry, material);
 			mesh.position.x = x;
 			mesh.position.y = y;
 			mesh.position.z = z;
 			mesh.name = "block";
 			scene.add(mesh);
+			mesh.castShadow = true;
+			mesh.receiveShadow = true;
 			return mesh;
 		}
 
@@ -282,7 +307,7 @@
 			playerCoordsUI.innerHTML = "(x:" + x + ", y:" + y + ", z:" + z + ")";
 		}
 
-		let blockRenderDist = 25;
+		let blockRenderDist = 20;
 		generateStart();
 		function generateStart() {
 			drawStart();
@@ -384,31 +409,53 @@
 			let actualSpeed = speed * delta;
 			if (data[key][y-2] == null) {
 				camera.position.y += actualSpeed * velocity.y;
-				velocity.y -= 8*delta;
+				velocity.y -= 10*delta;
 			} else {
-				canJump = true;
+				if (velocity.y < 0) {
+					velocity.y = 0;
+				}
+				camera.position.y += actualSpeed * velocity.y;
 			}
 		}
 
 		let INTERSECTED;
+		let face;
+		let col;
 		function checkMouse() {
 			let raycaster = new THREE.Raycaster();
 			const center = new THREE.Vector2(0, 0);
 			raycaster.setFromCamera( center, camera );
 			const intersects = raycaster.intersectObjects( scene.children );
 			if (intersects.length > 0) {
-				if (INTERSECTED != intersects[0].object) {
-					if (INTERSECTED) {
-						INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+				if (face != intersects[0].face) {
+					if (face) {
+						let faces = INTERSECTED.geometry.faces;
+						for (let i = 0; i < faces.length; i++) {
+							faces[i].color.setRGB(col.r, col.g, col.b);
+						}
+						INTERSECTED.geometry.colorsNeedUpdate = true;
 					}
+					face = intersects[0].face;
 					INTERSECTED = intersects[0].object;
-					INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
-					INTERSECTED.material.emissive.setHex( 0xf0260f );
+					let faces = INTERSECTED.geometry.faces;
+					for (let i = 0; i < faces.length; i++) {
+						if (faces[i].normal.x == face.normal.x && faces[i].normal.y == face.normal.y && faces[i].normal.z == face.normal.z) {
+							faces[i].color.setHex(0x373932);
+						} else {
+							col = faces[i].color;
+						}
+					}
+					INTERSECTED.geometry.colorsNeedUpdate = true;
 				}
 			} else {
-				if (INTERSECTED) {
-					INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+				if (face) {
+					let faces = INTERSECTED.geometry.faces;
+					for (let i = 0; i < faces.length; i++) {
+						faces[i].color.setRGB(col.r, col.g, col.b);
+					}
+					INTERSECTED.geometry.colorsNeedUpdate = true;
 				}
+				face = null;
 				INTERSECTED = null;
 			}
 		}
