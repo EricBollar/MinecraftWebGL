@@ -112,17 +112,11 @@
 					}
 				} else {
 					camera.position.y += actualSpeed;
+					checkWalls();
 				}
 			}
 			if (keyboard["q"]) {
 				camera.position.y -= actualSpeed;
-				//checkWalls();
-			}
-			if (keyboard["m"]) {
-				
-			}
-			if (mode == 0) {
-				playerPhysics(speed, delta);
 				checkWalls();
 			}
 		}
@@ -133,10 +127,7 @@
 			let z = Math.floor(camera.position.z+0.5);
 			let key = getKey(x, z);
 			let key2 = getKey(Math.floor(prev.x, prev.z));
-			if (data[key][y-2] != null) {
-				canJump = true;
-			}
-			if (data[key][y-2] != null || data[key][y]) {
+			if (data[key][y]) {
 				camera.position.x = prev.x;
 				camera.position.y = prev.y;
 				camera.position.z = prev.z;
@@ -154,12 +145,19 @@
 					destroyBlock(INTERSECTED.position.x, INTERSECTED.position.y, INTERSECTED.position.z);
 				}
 			} else if (e.keyCode || e.which == 3) { // right click
-				let posX = INTERSECTED.position.x + face.normal.x;
-				let posY = INTERSECTED.position.y + face.normal.y;
-				let posZ = INTERSECTED.position.z + face.normal.z;
-				let key = getKey(posX, posZ);
-				if (data[key][posY] == null) {
-					data[key][posY] = drawBlock(posX, posZ, posY, 5);
+				if (INTERSECTED) {
+					let posX = INTERSECTED.position.x + face.normal.x;
+					let posY = INTERSECTED.position.y + face.normal.y;
+					let posZ = INTERSECTED.position.z + face.normal.z;
+					let key = getKey(posX, posZ);
+					let x = Math.floor(camera.position.x+0.5);
+					let y = Math.floor(camera.position.y+0.5);
+					let z = Math.floor(camera.position.z+0.5);
+					if (posX != x || posY != y || posZ != z) {
+						if (data[key][posY] == null) {
+							data[key][posY] = drawBlock(posX, posZ, posY, 5);
+						}
+					}
 				}
 			}
 		}
@@ -284,7 +282,7 @@
 				case 6: m = dirtMap; break;
 			}
 			let geometry = base.clone();
-			var material = new THREE.MeshPhongMaterial({map: m, vertexColors: THREE.FaceColors});
+			var material = new THREE.MeshPhongMaterial({map: clientSideTestMap, vertexColors: THREE.FaceColors});
 			var mesh = new THREE.Mesh( geometry, material);
 			mesh.position.x = x;
 			mesh.position.y = y;
