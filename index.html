@@ -49,11 +49,11 @@
 
 		function addLighting()
 		{
-			let sky = 0x06a3f9;
+			let sky = 0xffffff;
 			const light = new THREE.HemisphereLight(sky, 0x50544f, 1);
 			scene.background = new THREE.Color(sky);
 			const near = 10;
-			const far = 12;
+			const far = 16;
 			scene.fog = new THREE.Fog(sky, near, far);
 			scene.add(light)
 		}
@@ -86,7 +86,7 @@
 		let mode = 1;
 		let prev = new THREE.Vector3(0, 0, 0);
 		function processKeyboard(delta) {
-			let speed = 4;
+			let speed = 3;
 			let actualSpeed = speed * delta; 
 			if (keyboard["w"]) {
 				controls.moveForward(actualSpeed);
@@ -263,6 +263,7 @@
 		let leafColor = 0x6fde62;
 		let diamondColor = 0x0a9ff5;
 		let base = new THREE.BoxGeometry(1, 1, 1);
+		let m = new THREE.TextureLoader().load("textures/dirt.jpeg");
 		
 		function drawBlock(x, z, y, value) {
 			let col = 0x000000;
@@ -275,7 +276,7 @@
 				case 5: col = diamondColor; break;
 			}
 			let geometry = base.clone();
-			var material = new THREE.MeshPhongMaterial({color: col, vertexColors: THREE.FaceColors});
+			var material = new THREE.MeshPhongMaterial({map: m, vertexColors: THREE.FaceColors});
 			for (var i = 0; i < geometry.faces.length; i++) {
 				var face = geometry.faces[i];
 				face.color.setHex(col);
@@ -440,7 +441,8 @@
 					let faces = INTERSECTED.geometry.faces;
 					for (let i = 0; i < faces.length; i++) {
 						if (faces[i].normal.x == face.normal.x && faces[i].normal.y == face.normal.y && faces[i].normal.z == face.normal.z) {
-							faces[i].color.setHex(0x373932);
+							//faces[i].color.setRGB(255, 255, 255);
+							faces[i].color.setRGB(faces[i].color.r + 1, faces[i].color.g + 1, faces[i].color.b + 1);
 						} else {
 							col = faces[i].color;
 						}
