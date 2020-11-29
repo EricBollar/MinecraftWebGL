@@ -25,9 +25,52 @@
 	</style>
 </head>
 
-<button id="button1" style="position: absolute; left: 50%; transform: translate(-50%, 0);">Press to Lock Cursor</button>
+<button id="button1" type="button" class="btn btn-primary" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -125%);">Press to Lock Cursor</button>
+
 <img src="textures/dot.png" style="position: absolute; width: 10px; left: 50%; top: 50%; transform: translate(-50%, -50%);">
-<h2 style="position: absolute; bottom: 0%; left: 10px;"><span class="badge badge-secondary" id="playerCoords">(0, 0)</span></h2>
+<h2 style="position: absolute; top: 0px; left: 490px;"><span class="badge badge-secondary" id="playerCoords">(0, 0)</span></h2>
+
+<img src="textures/grassInventory.png" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(-250%, -110%);">
+<img src="textures/inventoryBorder.png" id = "grassSelect" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(-250%, -110%);">
+<img src="textures/dirtInventory.png" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(-150%, -110%);">
+<img src="textures/inventoryBorder.png" id = "dirtSelect" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(-150%, -110%);">
+<img src="textures/stoneInventory.png" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(-50%, -110%);">
+<img src="textures/inventoryBorder.png" id = "stoneSelect" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(-50%, -110%);">
+<img src="textures/wwoodInventory.png" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(+50%, -110%);">
+<img src="textures/inventoryBorder.png" id = "woodSelect" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(+50%, -110%);">
+<img src="textures/brickInventory.png" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(+150%, -110%);">
+<img src="textures/inventoryBorder.png" id = "brickSelect" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(+150%, -110%);">
+
+<div style="position: absolute; top: 0px; left: 85px;">
+	<div id="card" class="card" style="background-color: #2b2b2b; position: relative; width: 400px;">
+		<button id="showhidebutton" type="button" class="btn btn-primary"
+			style="position: absolute; top: 15px; left: 70%;" href="javascript:void(0)" onclick="hideshow()">Hide Info</button>
+		<div class="card-body" style="color: rgb(65, 156, 77); font-size: 11;">
+			<h5>Minecraft in WebGL</h5>
+			<h6>Eric Bollar 11/28/20</h6>
+			<div id="info">
+				<p> My Website: <a href="http://www.ericbollar.com">http://www.ericbollar.com</a><br>
+					Github: <a
+						href="https://github.com/EricBollar/MinecraftWebGL">https://github.com/EricBollar/MinecraftWebGL</a><br>
+				</p>
+				<h6 style='text-align: center;'>Controls</h6>
+				<p> <i>Start by pressing the blue, "Press to Lock Cursor" button.</i><br>
+					Unlock Cursor: [Escape] <br>
+					Control Camera: [Mouse] <br>
+					Move Forward: [W]<br>
+					Move Backward: [S]<br>
+					Move Right: [D]<br>
+					Move Left: [A]<br>
+					Move Up: [Space]<br>
+					Move Down: [Q]<br>
+					Place Block: [Right-Click]<br>
+					Destroy Block: [Left-Click]<br>
+					Select Block Type (See Inventory Bar at Bottom): [1, 2, 3, 4, 5]
+				</p>
+			</div>
+		</div>
+	</div>
+</div>
 
 <body id="hide_id" style="background-color: black;">
 
@@ -36,26 +79,45 @@
 	<script src="three.js-master/examples/js/controls/PointerLockControls.js"></script>
 	<script src="three.js-master/examples/js/libs/stats.min.js"></script>
 	<script>
+
+		//import { GUI } from './three.js-master/examples/jsm/libs/dat.gui.module.js';
+
 		javascript:(function(){var script=document.createElement('script');script.onload=function(){var stats=new Stats();document.body.appendChild(stats.dom);requestAnimationFrame(function loop(){stats.update();requestAnimationFrame(loop)});};script.src='https://github.com/mrdoob/stats.js/blob/master/build/stats.min.js';document.head.appendChild(script);})()		
 		let renderer = new THREE.WebGLRenderer();
 		renderer.setSize(window.innerWidth, window.innerHeight);
 		document.body.appendChild(renderer.domElement);
-		let camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.001, 50);
+		let camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.001, 200);
 		camera.position.y = 5;
 		let scene = new THREE.Scene();
-		addLighting();
 		
 		let pause = false;
 
+		let blockRenderDist = 20;
+		let fog;
+		addLighting();
 		function addLighting()
 		{
 			let sky = 0xffffff;
 			const light = new THREE.HemisphereLight(sky, 0x50544f, 1);
 			scene.background = new THREE.Color(sky);
-			const near = 10;
-			const far = 16;
-			scene.fog = new THREE.Fog(sky, near, far);
+			fog = new THREE.Fog(sky, 10, 15);
+			scene.fog = fog;
 			scene.add(light)
+		}
+
+		var hidden = false;
+		function hideshow() {
+			if (!hidden) { // Hides
+				document.getElementById("info").style.visibility = "hidden";
+				document.getElementById("card").style.height = "90px";
+				document.getElementById("showhidebutton").innerHTML = "Show Info";
+				hidden = true;
+			} else {
+				document.getElementById("info").style.visibility = "visible";
+				document.getElementById("card").style.height = "auto";
+				document.getElementById("showhidebutton").innerHTML = "Hide Info";
+				hidden = false;
+			}
 		}
 
 		// Inputs //
@@ -67,11 +129,11 @@
 			controls.lock();
 		})
 		controls.addEventListener('lock', ()=> {
-			btn.innerHTML = "Press ESC to Unlock Cursor"
+			btn.style.display = "none";
 			pause = true;
 		})
 		controls.addEventListener('unlock', ()=> {
-			btn.innerHTML = "Press to Lock Cursor"
+			btn.style.display = "block";
 			pause = false;
 		})
 
@@ -85,6 +147,16 @@
 
 		let mode = 1;
 		let prev = new THREE.Vector3(0, 0, 0);
+		let grassSelect = document.getElementById("grassSelect");
+		let dirtSelect = document.getElementById("dirtSelect");
+		let stoneSelect = document.getElementById("stoneSelect");
+		let woodSelect = document.getElementById("woodSelect");
+		let brickSelect = document.getElementById("brickSelect");
+		grassSelect.style.display = "block";
+		dirtSelect.style.display = "none";
+		stoneSelect.style.display = "none";
+		woodSelect.style.display = "none";
+		brickSelect.style.display = "none";
 		function processKeyboard(delta) {
 			let speed = 3;
 			let actualSpeed = speed * delta; 
@@ -119,6 +191,46 @@
 				camera.position.y -= actualSpeed;
 				checkWalls();
 			}
+			if (keyboard["1"]) {
+				placing = 1;
+				grassSelect.style.display = "block";
+				dirtSelect.style.display = "none";
+				stoneSelect.style.display = "none";
+				woodSelect.style.display = "none";
+				brickSelect.style.display = "none";
+			}
+			if (keyboard["2"]) {
+				placing = 6;
+				grassSelect.style.display = "none";
+				dirtSelect.style.display = "block";
+				stoneSelect.style.display = "none";
+				woodSelect.style.display = "none";
+				brickSelect.style.display = "none";
+			}
+			if (keyboard["3"]) {
+				placing = 2;
+				grassSelect.style.display = "none";
+				dirtSelect.style.display = "none";
+				stoneSelect.style.display = "block";
+				woodSelect.style.display = "none";
+				brickSelect.style.display = "none";
+			}
+			if (keyboard["4"]) {
+				placing = 3;
+				grassSelect.style.display = "none";
+				dirtSelect.style.display = "none";
+				stoneSelect.style.display = "none";
+				woodSelect.style.display = "block";
+				brickSelect.style.display = "none";
+			}
+			if (keyboard["5"]) {
+				placing = 7;
+				grassSelect.style.display = "none";
+				dirtSelect.style.display = "none";
+				stoneSelect.style.display = "none";
+				woodSelect.style.display = "none";
+				brickSelect.style.display = "block";
+			}
 		}
 
 		function checkWalls() {
@@ -138,6 +250,7 @@
 
 		let data = new Map();
 
+		let placing = 1;
 		window.onmousedown = function(e) {
 			e = e || window.event;
 			if (e.keyCode || e.which == 1) { // left click
@@ -155,7 +268,7 @@
 					let z = Math.floor(camera.position.z+0.5);
 					if (posX != x || posY != y || posZ != z) {
 						if (data[key][posY] == null) {
-							data[key][posY] = drawBlock(posX, posZ, posY, 5);
+							data[key][posY] = drawBlock(posX, posZ, posY, placing);
 						}
 					}
 				}
@@ -196,7 +309,7 @@
 		noise.seed(Math.random());
 
 		function getHeightValue(x, z) {
-			return 2+Math.floor(10 * Math.abs(noise.perlin2(x/50, z/50)));
+			return 2+Math.floor(16 * Math.abs(noise.perlin2(x/50, z/50)));
 		}
 
 		function getBlock(x, y, z) {
@@ -269,8 +382,10 @@
 		let leafMap = loader.load("textures/leaf.png");
 		let diamondMap = loader.load("textures/diamond.jpeg");
 		let bottomMap = loader.load("textures/bedrock.png");
+		let brickMap = loader.load("textures/brick.png");
 		let clientSideTestMap = loader.load("https://threejsfundamentals.org/threejs/resources/images/wall.jpg");
-		
+
+		let m;
 		function drawBlock(x, z, y, value) {
 			switch (value) {
 				case 0: m = bottomMap; break;
@@ -280,6 +395,7 @@
 				case 4: m = leafMap; break;
 				case 5: m = diamondMap; break;
 				case 6: m = dirtMap; break;
+				case 7: m = brickMap; break;
 			}
 			let geometry = base.clone();
 			var material = new THREE.MeshPhongMaterial({map: m, vertexColors: THREE.FaceColors});
@@ -310,7 +426,28 @@
 			playerCoordsUI.innerHTML = "(x:" + x + ", y:" + y + ", z:" + z + ")";
 		}
 
-		let blockRenderDist = 20;
+		let renderDistSlider;
+		//displayGUI();
+		function displayGUI() {
+			const gui = new GUI();
+			let parameters = {
+				a: 20,
+			};
+			renderDistSlider = gui.add(parameters, 'a').min(15).max(100).step(1).name('Render Distance (Blocks)');
+			gui.open();
+		}
+
+		function checkGUI() {
+			let jar;
+			//renderDistSlider.onChange(function(jar) {
+			// 	blockRenderDist = jar;
+			// 	fog.near = blockRenderDist - 0.5*blockRenderDist;
+			// 	fog.far = blockRenderDist - 0.25*blockRenderDist;
+			// 	drawStart();
+			// 	removeBlocks();
+			// })
+		}
+
 		generateStart();
 		function generateStart() {
 			drawStart();
@@ -325,9 +462,15 @@
 		}
 
 		function drawStart() {
-			for (let r = -blockRenderDist; r < blockRenderDist; r++) {
-				for (let c = -blockRenderDist; c < blockRenderDist; c++) {
-					generateCoordinate(r, c);
+			let x = Math.floor(camera.position.x + 0.5);
+			let z = Math.floor(camera.position.z + 0.5);
+			for (let r = -blockRenderDist - 2 + x; r <= blockRenderDist + 2 + x; r++) {
+				for (let c = -blockRenderDist - 2 + z; c <= blockRenderDist + 2 + z; c++) {
+					if (!data[getKey(r, c)]) {
+						generateCoordinate(r, c);
+					} else {
+						drawCoord(r, c);
+					}
 				}
 			}
 		}
@@ -368,6 +511,7 @@
 
 		function drawBlocks(playerX, playerZ) {
 			updateCrossovers();
+			//drawStart();
 			for (let c = playerZ + blockRenderDist - 1; c <= playerZ + blockRenderDist; c++) {
 				for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
 					drawCoord(r, c);
@@ -443,7 +587,6 @@
 					let faces = INTERSECTED.geometry.faces;
 					for (let i = 0; i < faces.length; i++) {
 						if (faces[i].normal.x == face.normal.x && faces[i].normal.y == face.normal.y && faces[i].normal.z == face.normal.z) {
-							//faces[i].color.setRGB(255, 255, 255);
 							faces[i].color.setRGB(faces[i].color.r + 1, faces[i].color.g + 1, faces[i].color.b + 1);
 						} else {
 							col = faces[i].color;
@@ -467,11 +610,12 @@
 		function drawScene() {
 			renderer.render(scene, camera);
 			let delta = clock.getDelta();
+			processLand();
 			if (pause) {
 				processKeyboard(delta);
-				processLand();
 				checkMouse();
 			}
+			checkGUI();
 			requestAnimationFrame(drawScene);
 		}
 
