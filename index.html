@@ -534,22 +534,22 @@
 		function drawBlocks(playerX, playerZ) {
 			updateCrossovers();
 			//drawStart();
-			for (let c = playerZ + blockRenderDist - 1; c <= playerZ + blockRenderDist; c++) {
+			for (let c = playerZ + blockRenderDist - 2; c <= playerZ + blockRenderDist; c++) {
 				for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
 					drawCoord(r, c);
 				}
 			}
-			for (let c = playerZ - blockRenderDist + 1; c >= playerZ - blockRenderDist; c--) {
+			for (let c = playerZ - blockRenderDist + 2; c >= playerZ - blockRenderDist; c--) {
 				for (let r = playerX - blockRenderDist; r <= playerX + blockRenderDist; r++) {
 					drawCoord(r, c);
 				}
 			}
-			for (let r = playerX + blockRenderDist - 1; r <= playerX + blockRenderDist; r++) {
+			for (let r = playerX + blockRenderDist - 2; r <= playerX + blockRenderDist; r++) {
 				for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
 					drawCoord(r, c);
 				}
 			}
-			for (let r = playerX - blockRenderDist + 1; r >= playerX - blockRenderDist; r--) {
+			for (let r = playerX - blockRenderDist + 2; r >= playerX - blockRenderDist; r--) {
 				for (let c = playerZ - blockRenderDist; c <= playerZ + blockRenderDist; c++) {
 					drawCoord(r, c);
 				}
