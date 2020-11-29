@@ -29,6 +29,7 @@
 
 <img src="textures/dot.png" style="position: absolute; width: 10px; left: 50%; top: 50%; transform: translate(-50%, -50%);">
 <h2 style="position: absolute; top: 0px; left: 490px;"><span class="badge badge-secondary" id="playerCoords">(0, 0)</span></h2>
+<h2 style="position: absolute; top: 40px; left: 490px;"><span class="badge badge-secondary" id="">Press [ESCAPE] to Unlock Cursor</span></h2>
 
 <img src="textures/grassInventory.png" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(-250%, -110%);">
 <img src="textures/inventoryBorder.png" id = "grassSelect" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(-250%, -110%);">
@@ -40,6 +41,9 @@
 <img src="textures/inventoryBorder.png" id = "woodSelect" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(+50%, -110%);">
 <img src="textures/brickInventory.png" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(+150%, -110%);">
 <img src="textures/inventoryBorder.png" id = "brickSelect" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(+150%, -110%);">
+
+<h2 style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(+310%, -120%);"><span class="badge badge-secondary" id="diamondCount">x0</span></h2>
+<img src="textures/diamondIcon.png" id = "" style="position: absolute; width: 100px; left: 50%; top: 100%; transform: translate(+250%, -120%);">
 
 <div style="position: absolute; top: 0px; left: 85px;">
 	<div id="card" class="card" style="background-color: #2b2b2b; position: relative; width: 400px;">
@@ -67,6 +71,15 @@
 					Destroy Block: [Left-Click]<br>
 					Select Block Type (See Inventory Bar at Bottom): [1, 2, 3, 4, 5]
 				</p>
+				<h6 style='text-align: center;'>About</h6>
+				<p> This isn't so much a game as it is a tech demo. It is a partial recreation of the popular game <i>Minecraft</i> in WebGL using
+					<a href="https://threejs.org/">Three.js</a>. The player can fly through the world with basic collision detection and can break
+					and place blocks. Throughout the infinite, randomly generated world, diamonds are spawned underground, and the number of diamonds that
+					the player finds is recorded at the bottom, next to the player's inventory of placeable blocks. It's helpful to know that the bright orange
+					border around one of the blocks is the currently selected block. The player can cycle through which block they want to place by using the
+					number keys, one through five. There really is no aim to the game, so the player can make their own. Build a house, find over a hundred diamonds,
+					or explore the endless terrain!
+				</p>
 			</div>
 		</div>
 	</div>
@@ -92,7 +105,7 @@
 		
 		let pause = false;
 
-		let blockRenderDist = 20;
+		let blockRenderDist = 25;
 		let fog;
 		addLighting();
 		function addLighting()
@@ -251,11 +264,17 @@
 		let data = new Map();
 
 		let placing = 1;
+		let diamondsFound = 0;
+		let diamondCount = document.getElementById("diamondCount");
 		window.onmousedown = function(e) {
 			e = e || window.event;
 			if (e.keyCode || e.which == 1) { // left click
 				if (INTERSECTED && INTERSECTED.name != "bottom" && pause) {
 					destroyBlock(INTERSECTED.position.x, INTERSECTED.position.y, INTERSECTED.position.z);
+					if (INTERSECTED.material.map == diamondMap) {
+						diamondsFound++;
+						diamondCount.innerHTML = "x" + diamondsFound;
+					}
 				}
 			} else if (e.keyCode || e.which == 3) { // right click
 				if (INTERSECTED) {
