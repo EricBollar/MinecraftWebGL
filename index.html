@@ -478,6 +478,9 @@
 				}
 			}
 			camera.position.y = tall + 3;
+			while (data[key][camera.position.y] != null) {
+				camera.position.y++;
+			}
 		}
 
 		function drawStart() {
